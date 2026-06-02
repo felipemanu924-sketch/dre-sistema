@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { User, ContaBancaria, CentroCusto, TipoConta } from '@/types'
 import { formatCurrency, roleLabel, generateId } from '@/lib/utils'
 import { cn } from '@/lib/utils'
-import { Building2, Users, CreditCard, MapPin, Plus, Edit2, Trash2, X, Save, ToggleRight, ToggleLeft, Shield, Wallet } from 'lucide-react'
+import { Building2, Users, CreditCard, MapPin, Plus, Edit2, Trash2, X, Save, ToggleRight, ToggleLeft, Wallet } from 'lucide-react'
 
 const TABS = [
   { id: 'empresa', label: 'Empresa', icon: <Building2 size={16} /> },
@@ -193,12 +193,6 @@ export default function ConfiguracoesPage() {
                 ))}
               </tbody>
             </table>
-            <div className="px-5 py-3 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-700">
-              <div className="flex items-center gap-2 text-xs text-slate-500">
-                <Shield size={12} />
-                <span>Senha padrão para demonstração: <code className="bg-slate-200 dark:bg-slate-600 px-1 rounded">admin123</code></span>
-              </div>
-            </div>
           </div>
         )}
 
