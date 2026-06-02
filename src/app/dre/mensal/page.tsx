@@ -2,7 +2,7 @@
 import AppLayout from '@/components/layout/AppLayout'
 import { useData } from '@/context/DataContext'
 import { useState, useMemo } from 'react'
-import { formatCurrency, formatPercent, getFullMonthName, calcVariation } from '@/lib/utils'
+import { formatCurrency, formatPercent, getFullMonthName, calcVariation, openPrintWindow, downloadCSV } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { Printer, Download, ChevronLeft, ChevronRight, ArrowUpRight, ArrowDownRight, Minus, TrendingUp, TrendingDown } from 'lucide-react'
 
@@ -144,6 +144,46 @@ export default function DREMensalPage() {
   const lucroLiquidoAnterior = dreRowsAnterior.find(r => r.id === '12')
   const variacao = calcVariation(lucroLiquidoRow?.valor || 0, lucroLiquidoAnterior?.valor || 0)
 
+  const handlePrint = () => {
+    const periodo = `${getFullMonthName(month)} ${year}`
+    const periodoAnterior = `${getFullMonthName(prevMonth)} ${prevYear}`
+    const empresa = store.company?.nome || 'Empresa'
+    const rows = dreRows.filter(r => r.level !== 'separator').map(r => {
+      const prev = dreRowsAnterior.find(p => p.id === r.id)
+      const isResult = r.level === 'resultado'
+      const isDeduction = r.isDeduction
+      const rowClass = isResult ? (r.valor >= 0 ? 'result-row' : 'result-row-red') : r.level === 'grupo' ? 'group-row' : ''
+      const valClass = isDeduction && r.valor > 0 ? 'deduction right' : 'right'
+      return `<tr class="${rowClass}">
+        <td>${r.label}</td>
+        <td class="${valClass}">${r.isDeduction && r.valor > 0 ? '(' + formatCurrency(r.valor) + ')' : formatCurrency(r.valor)}</td>
+        ${prev !== undefined ? `<td class="${valClass}">${r.isDeduction && prev.valor > 0 ? '(' + formatCurrency(prev.valor) + ')' : formatCurrency(prev.valor)}</td>` : ''}
+      </tr>`
+    }).join('')
+    const html = `
+      <h1>DRE — Demonstração do Resultado do Exercício</h1>
+      <div class="meta">${empresa} &nbsp;|&nbsp; Período: ${periodo} &nbsp;|&nbsp; Comparativo: ${periodoAnterior}</div>
+      <table>
+        <thead><tr>
+          <th>Descrição</th>
+          <th class="right">${periodo}</th>
+          <th class="right">${periodoAnterior}</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`
+    openPrintWindow(`DRE ${periodo} — ${empresa}`, html)
+  }
+
+  const handleExportCSV = () => {
+    const periodo = `${getFullMonthName(month)}_${year}`
+    const rows: string[][] = [['Descrição', `${getFullMonthName(month)} ${year}`, `${getFullMonthName(prevMonth)} ${prevYear}`]]
+    dreRows.filter(r => r.level !== 'separator').forEach(r => {
+      const prev = dreRowsAnterior.find(p => p.id === r.id)
+      rows.push([r.label, r.valor.toFixed(2), (prev?.valor ?? 0).toFixed(2)])
+    })
+    downloadCSV(rows, `dre_mensal_${periodo}.csv`)
+  }
+
   return (
     <AppLayout>
       <div className="space-y-5">
@@ -170,11 +210,11 @@ export default function DREMensalPage() {
                 <input type="checkbox" checked={showComparison} onChange={e => setShowComparison(e.target.checked)} className="w-4 h-4 text-blue-600 rounded" />
                 <span className="text-sm text-slate-600 dark:text-slate-400">Comparar com período anterior</span>
               </label>
-              <button onClick={() => window.print()} className="btn-secondary text-sm no-print">
+              <button onClick={handlePrint} className="btn-secondary text-sm no-print">
                 <Printer size={14} /> Imprimir
               </button>
-              <button className="btn-secondary text-sm no-print">
-                <Download size={14} /> Exportar PDF
+              <button onClick={handleExportCSV} className="btn-secondary text-sm no-print">
+                <Download size={14} /> Exportar CSV
               </button>
             </div>
           </div>

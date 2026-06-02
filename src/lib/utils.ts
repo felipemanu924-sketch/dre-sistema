@@ -130,3 +130,41 @@ export function downloadCSV(rows: string[][], filename: string) {
 export function printPage() {
   window.print()
 }
+
+export function openPrintWindow(title: string, bodyHtml: string) {
+  const win = window.open('', '_blank')
+  if (!win) return
+  win.document.write(`<!DOCTYPE html><html lang="pt-BR"><head>
+<meta charset="UTF-8"/>
+<title>${title}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,sans-serif;font-size:12px;color:#1e293b;padding:32px}
+  h1{font-size:18px;font-weight:700;margin-bottom:4px}
+  h2{font-size:14px;font-weight:600;margin:20px 0 8px}
+  .meta{font-size:11px;color:#64748b;margin-bottom:24px}
+  table{width:100%;border-collapse:collapse;margin-bottom:20px}
+  th{background:#f1f5f9;text-align:left;padding:7px 10px;font-size:11px;font-weight:600;border-bottom:2px solid #e2e8f0}
+  td{padding:6px 10px;border-bottom:1px solid #f1f5f9;font-size:12px}
+  tr:last-child td{border-bottom:none}
+  .right{text-align:right}
+  .bold{font-weight:700}
+  .positive{color:#059669}
+  .negative{color:#dc2626}
+  .blue{color:#2563eb}
+  .total-row td{background:#eff6ff;font-weight:700;border-top:2px solid #bfdbfe}
+  .group-row td{background:#f8fafc;font-weight:600}
+  .result-row td{background:#ecfdf5;font-weight:700;color:#065f46}
+  .result-row-red td{background:#fef2f2;font-weight:700;color:#991b1b}
+  .separator td{border:none;padding:4px}
+  .deduction{color:#dc2626}
+  .footer{margin-top:32px;padding-top:12px;border-top:1px solid #e2e8f0;font-size:10px;color:#94a3b8}
+  @media print{body{padding:16px}}
+</style>
+</head><body>
+${bodyHtml}
+<div class="footer">Gerado em ${new Date().toLocaleString('pt-BR')} — FinancePro</div>
+</body></html>`)
+  win.document.close()
+  setTimeout(() => win.print(), 400)
+}

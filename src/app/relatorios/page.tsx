@@ -2,7 +2,7 @@
 import AppLayout from '@/components/layout/AppLayout'
 import { useData } from '@/context/DataContext'
 import { useState, useMemo } from 'react'
-import { formatCurrency, formatCurrencyShort, formatPercent, getFullMonthName, getMonthName, downloadCSV } from '@/lib/utils'
+import { formatCurrency, formatCurrencyShort, formatPercent, getFullMonthName, getMonthName, downloadCSV, openPrintWindow } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { FileText, Download, Printer, BarChart3, PieChart, TrendingUp, Filter, Table2 } from 'lucide-react'
 import { BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
@@ -16,8 +16,6 @@ const REPORT_TYPES = [
   { id: 'contas', label: 'Contas Bancárias', icon: <FileText size={18} />, desc: 'Posição e movimentação das contas' },
 ]
 
-const MONTH_REV = [150000, 142000, 168000, 175000, 182000, 195000, 188000, 201000, 215000, 228000, 235000, 248000]
-
 export default function RelatoriosPage() {
   const { store } = useData()
   const today = new Date()
@@ -30,16 +28,27 @@ export default function RelatoriosPage() {
   const dreData = useMemo(() => {
     return Array.from({ length: maxMonth }, (_, i) => {
       const m = i + 1
-      const rev = MONTH_REV[m - 1]
+      const comp = `${today.getFullYear()}-${String(m).padStart(2, '0')}`
+      const items = (store.lancamentos || []).filter(l => l.competencia === comp && l.status !== 'cancelado')
+      const sumByTipo = (tipos: string[]) => {
+        const catIds = (store.categorias || []).filter(c => tipos.includes(c.tipo)).map(c => c.id)
+        return items.filter(l => catIds.includes(l.categoriaId)).reduce((s, l) => s + l.valor, 0)
+      }
+      const receitaBruta = sumByTipo(['receita'])
+      const deducoes = sumByTipo(['deducao'])
+      const custos = sumByTipo(['custo'])
+      const despesas = sumByTipo(['despesa_admin', 'despesa_comercial', 'despesa_financeira', 'imposto'])
+      const lucroLiquido = receitaBruta - deducoes - custos - despesas
+      const custosDespesas = custos + despesas
       return {
         mes: getMonthName(m),
-        receitaBruta: rev,
-        lucroLiquido: rev * 0.1265,
-        custosDespesas: rev * 0.32 + rev * 0.30,
-        margem: parseFloat(((rev * 0.1265 / rev) * 100).toFixed(1)),
+        receitaBruta,
+        lucroLiquido,
+        custosDespesas,
+        margem: receitaBruta > 0 ? parseFloat(((lucroLiquido / receitaBruta) * 100).toFixed(1)) : 0,
       }
     })
-  }, [maxMonth])
+  }, [store.lancamentos, store.categorias, maxMonth, today.getFullYear()])
 
   const catData = useMemo(() => {
     const counts: Record<string, { nome: string; total: number; tipo: string }> = {}
@@ -79,15 +88,71 @@ export default function RelatoriosPage() {
   const COLORS = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6', '#f97316']
 
   const exportReport = () => {
+    const empresa = store.company?.nome || 'Empresa'
     if (selectedReport === 'dre') {
-      const rows = [['Mês', 'Receita Bruta', 'Lucro Líquido', 'Custos+Despesas', 'Margem %'],
-        ...dreData.map(d => [d.mes, d.receitaBruta.toFixed(2), d.lucroLiquido.toFixed(2), d.custosDespesas.toFixed(2), d.margem.toString()])]
-      downloadCSV(rows, `dre_${today.getFullYear()}.csv`)
+      const rows = [['Mês', 'Receita Bruta', 'Custos+Despesas', 'Lucro Líquido', 'Margem %'],
+        ...dreData.map(d => [d.mes, d.receitaBruta.toFixed(2), d.custosDespesas.toFixed(2), d.lucroLiquido.toFixed(2), d.margem.toString()]),
+        ['TOTAL', dreData.reduce((s,d)=>s+d.receitaBruta,0).toFixed(2), dreData.reduce((s,d)=>s+d.custosDespesas,0).toFixed(2), dreData.reduce((s,d)=>s+d.lucroLiquido,0).toFixed(2), '']]
+      downloadCSV(rows, `dre_gerencial_${today.getFullYear()}.csv`)
     } else if (selectedReport === 'categorias') {
       const rows = [['Categoria', 'Tipo', 'Total'],
         ...catData.map(c => [c.nome, c.tipo, c.total.toFixed(2)])]
       downloadCSV(rows, `categorias_${today.getFullYear()}.csv`)
+    } else if (selectedReport === 'centros') {
+      const rows = [['Centro de Custo', 'Entradas', 'Saídas', 'Resultado'],
+        ...ccData.map(c => [c.nome, c.entradas.toFixed(2), c.saidas.toFixed(2), (c.entradas - c.saidas).toFixed(2)])]
+      downloadCSV(rows, `centros_custo_${today.getFullYear()}.csv`)
+    } else if (selectedReport === 'contas') {
+      const rows = [['Conta', 'Banco', 'Saldo Inicial', 'Entradas', 'Saídas', 'Saldo Atual'],
+        ...contasData.map(c => [c.nome, c.banco, c.saldoInicial.toFixed(2), c.entradas.toFixed(2), c.saidas.toFixed(2), c.saldoAtual.toFixed(2)])]
+      downloadCSV(rows, `contas_bancarias_${today.getFullYear()}.csv`)
+    } else if (selectedReport === 'receitas' || selectedReport === 'despesas') {
+      const filtered = catData.filter(c => selectedReport === 'receitas' ? c.tipo === 'receita' : ['custo','despesa_admin','despesa_comercial','despesa_financeira','imposto'].includes(c.tipo))
+      const rows = [['Categoria', 'Tipo', 'Total'],
+        ...filtered.map(c => [c.nome, c.tipo, c.total.toFixed(2)])]
+      downloadCSV(rows, `${selectedReport}_${today.getFullYear()}.csv`)
     }
+  }
+
+  const handlePrint = () => {
+    const empresa = store.company?.nome || 'Empresa'
+    let html = `<h1>${REPORT_TYPES.find(r => r.id === selectedReport)?.label ?? 'Relatório'}</h1>
+    <div class="meta">${empresa} &nbsp;|&nbsp; ${today.getFullYear()}</div>`
+
+    if (selectedReport === 'dre') {
+      const tableRows = dreData.map(d => `<tr>
+        <td>${d.mes}/${today.getFullYear()}</td>
+        <td class="right blue">${formatCurrency(d.receitaBruta)}</td>
+        <td class="right negative">${formatCurrency(d.custosDespesas)}</td>
+        <td class="right ${d.lucroLiquido >= 0 ? 'positive' : 'negative'} bold">${formatCurrency(d.lucroLiquido)}</td>
+        <td class="right">${d.margem}%</td>
+      </tr>`).join('')
+      const totRec = dreData.reduce((s,d)=>s+d.receitaBruta,0)
+      const totDesp = dreData.reduce((s,d)=>s+d.custosDespesas,0)
+      const totLucro = dreData.reduce((s,d)=>s+d.lucroLiquido,0)
+      const totMargem = totRec > 0 ? ((totLucro/totRec)*100).toFixed(1) : '0'
+      html += `<table>
+        <thead><tr><th>Mês</th><th class="right">Receita Bruta</th><th class="right">Custos+Despesas</th><th class="right">Lucro Líquido</th><th class="right">Margem</th></tr></thead>
+        <tbody>${tableRows}
+          <tr class="total-row"><td>TOTAL</td><td class="right">${formatCurrency(totRec)}</td><td class="right">${formatCurrency(totDesp)}</td><td class="right">${formatCurrency(totLucro)}</td><td class="right">${totMargem}%</td></tr>
+        </tbody></table>`
+    } else if (selectedReport === 'categorias') {
+      const total = catData.reduce((s,c)=>s+c.total,0)
+      const rows = catData.map(c => `<tr><td>${c.nome}</td><td>${c.tipo}</td><td class="right">${formatCurrency(c.total)}</td><td class="right">${formatPercent((c.total/total)*100)}</td></tr>`).join('')
+      html += `<table><thead><tr><th>Categoria</th><th>Tipo</th><th class="right">Total</th><th class="right">%</th></tr></thead><tbody>${rows}</tbody></table>`
+    } else if (selectedReport === 'centros') {
+      const rows = ccData.map(c => `<tr><td>${c.nome}</td><td class="right positive">${formatCurrency(c.entradas)}</td><td class="right negative">${formatCurrency(c.saidas)}</td><td class="right ${c.entradas-c.saidas>=0?'positive':'negative'} bold">${formatCurrency(c.entradas-c.saidas)}</td></tr>`).join('')
+      html += `<table><thead><tr><th>Centro de Custo</th><th class="right">Entradas</th><th class="right">Saídas</th><th class="right">Resultado</th></tr></thead><tbody>${rows}</tbody></table>`
+    } else if (selectedReport === 'contas') {
+      const rows = contasData.map(c => `<tr><td>${c.nome}</td><td>${c.banco}</td><td class="right">${formatCurrency(c.saldoInicial)}</td><td class="right positive">${formatCurrency(c.entradas)}</td><td class="right negative">${formatCurrency(c.saidas)}</td><td class="right bold">${formatCurrency(c.saldoAtual)}</td></tr>`).join('')
+      html += `<table><thead><tr><th>Conta</th><th>Banco</th><th class="right">Saldo Inicial</th><th class="right">Entradas</th><th class="right">Saídas</th><th class="right">Saldo Atual</th></tr></thead><tbody>${rows}</tbody></table>`
+    } else if (selectedReport === 'receitas' || selectedReport === 'despesas') {
+      const filtered = catData.filter(c => selectedReport === 'receitas' ? c.tipo === 'receita' : ['custo','despesa_admin','despesa_comercial','despesa_financeira','imposto'].includes(c.tipo))
+      const total = filtered.reduce((s,c)=>s+c.total,0)
+      const rows = filtered.map(c => `<tr><td>${c.nome}</td><td class="right">${formatCurrency(c.total)}</td><td class="right">${formatPercent((c.total/total)*100)}</td></tr>`).join('')
+      html += `<table><thead><tr><th>Categoria</th><th class="right">Total</th><th class="right">%</th></tr></thead><tbody>${rows}<tr class="total-row"><td>TOTAL</td><td class="right">${formatCurrency(total)}</td><td class="right">100%</td></tr></tbody></table>`
+    }
+    openPrintWindow(`${REPORT_TYPES.find(r=>r.id===selectedReport)?.label} — ${empresa}`, html)
   }
 
   return (
@@ -131,7 +196,7 @@ export default function RelatoriosPage() {
               <button onClick={exportReport} className="btn-secondary">
                 <Download size={14} /> Exportar CSV
               </button>
-              <button onClick={() => window.print()} className="btn-secondary">
+              <button onClick={handlePrint} className="btn-secondary">
                 <Printer size={14} /> Imprimir
               </button>
             </div>

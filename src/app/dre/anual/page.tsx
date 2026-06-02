@@ -2,7 +2,7 @@
 import AppLayout from '@/components/layout/AppLayout'
 import { useData } from '@/context/DataContext'
 import { useState, useMemo } from 'react'
-import { formatCurrencyShort, formatCurrency, getMonthName, formatPercent, calcVariation } from '@/lib/utils'
+import { formatCurrencyShort, formatCurrency, getMonthName, formatPercent, calcVariation, openPrintWindow, downloadCSV } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { Printer, Download, BarChart3, ArrowUpRight, ArrowDownRight } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts'
@@ -90,6 +90,52 @@ export default function DREAnualPage() {
     bold: 'bg-gradient-to-r from-blue-900 to-blue-800 text-white font-bold',
   }
 
+  const handlePrint = () => {
+    const empresa = store.company?.nome || 'Empresa'
+    const monthHeaders = monthlyData.map(m => `<th class="right">${getMonthName(m.month)}</th>`).join('') + '<th class="right bold">Total</th>'
+    const bodyRows = DRE_STRUCTURE.map(row => {
+      if (!row.tipo && !row.id.startsWith('receita') && !row.id.startsWith('lucro') && !row.id.startsWith('ebit') && !row.id.startsWith('ebt') && !row.id.startsWith('deducoes') && !row.id.startsWith('custos') && !row.id.startsWith('desp') && !row.id.startsWith('impostos')) {
+        const isResult = row.level === 'resultado'
+        const rowClass = isResult ? (getRowValue(row, totals) >= 0 ? 'result-row' : 'result-row-red') : row.isDeduction ? 'group-row' : ''
+        const cells = monthlyData.map(m => {
+          const v = getRowValue(row, m as any)
+          return `<td class="right ${row.isDeduction && v > 0 ? 'deduction' : ''}">${row.isDeduction && v > 0 ? '(' + formatCurrency(v) + ')' : formatCurrency(v)}</td>`
+        }).join('')
+        const total = getRowValue(row, totals)
+        const totalCell = `<td class="right bold ${row.isDeduction && total > 0 ? 'deduction' : ''}">${row.isDeduction && total > 0 ? '(' + formatCurrency(total) + ')' : formatCurrency(total)}</td>`
+        return `<tr class="${rowClass}"><td>${row.label}</td>${cells}${totalCell}</tr>`
+      }
+      const isResult = row.level === 'resultado'
+      const rowClass = isResult ? (getRowValue(row, totals) >= 0 ? 'result-row' : 'result-row-red') : row.isDeduction ? 'group-row' : ''
+      const cells = monthlyData.map(m => {
+        const v = getRowValue(row, m as any)
+        return `<td class="right ${row.isDeduction && v > 0 ? 'deduction' : ''}">${row.isDeduction && v > 0 ? '(' + formatCurrency(v) + ')' : formatCurrency(v)}</td>`
+      }).join('')
+      const total = getRowValue(row, totals)
+      const totalCell = `<td class="right bold ${row.isDeduction && total > 0 ? 'deduction' : ''}">${row.isDeduction && total > 0 ? '(' + formatCurrency(total) + ')' : formatCurrency(total)}</td>`
+      return `<tr class="${rowClass}"><td>${row.label}</td>${cells}${totalCell}</tr>`
+    }).join('')
+    const html = `
+      <h1>DRE Anual — Demonstração do Resultado do Exercício</h1>
+      <div class="meta">${empresa} &nbsp;|&nbsp; Exercício: ${year}</div>
+      <table>
+        <thead><tr><th>Descrição</th>${monthHeaders}</tr></thead>
+        <tbody>${bodyRows}</tbody>
+      </table>`
+    openPrintWindow(`DRE Anual ${year} — ${empresa}`, html)
+  }
+
+  const handleExportCSV = () => {
+    const monthNames = monthlyData.map(m => getMonthName(m.month))
+    const header = ['Descrição', ...monthNames, 'Total']
+    const rows: string[][] = [header]
+    DRE_STRUCTURE.forEach(row => {
+      const cells = monthlyData.map(m => getRowValue(row, m as any).toFixed(2))
+      rows.push([row.label, ...cells, getRowValue(row, totals).toFixed(2)])
+    })
+    downloadCSV(rows, `dre_anual_${year}.csv`)
+  }
+
   return (
     <AppLayout>
       <div className="space-y-5">
@@ -117,8 +163,8 @@ export default function DREAnualPage() {
                 <BarChart3 size={14} className="inline mr-1" />Gráficos
               </button>
             </div>
-            <button onClick={() => window.print()} className="btn-secondary text-sm no-print"><Printer size={14} /> Imprimir</button>
-            <button className="btn-secondary text-sm no-print"><Download size={14} /> Exportar</button>
+            <button onClick={handlePrint} className="btn-secondary text-sm no-print"><Printer size={14} /> Imprimir</button>
+            <button onClick={handleExportCSV} className="btn-secondary text-sm no-print"><Download size={14} /> Exportar CSV</button>
           </div>
         </div>
 
