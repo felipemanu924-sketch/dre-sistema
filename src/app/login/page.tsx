@@ -1,15 +1,9 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { DollarSign, Eye, EyeOff, Loader2, TrendingUp, Shield, BarChart3, CheckCircle2 } from 'lucide-react'
+import { DollarSign, Eye, EyeOff, Loader2, TrendingUp, Shield, BarChart3 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { cn } from '@/lib/utils'
-
-const DEMO_ACCOUNTS = [
-  { email: 'admin@techcorp.com.br', label: 'Administrador' },
-  { email: 'financeiro@techcorp.com.br', label: 'Financeiro' },
-  { email: 'gestor@techcorp.com.br', label: 'Gestor' },
-]
 
 export default function LoginPage() {
   const { login, isAuthenticated, loading } = useAuth()
@@ -36,12 +30,6 @@ export default function LoginPage() {
       setError(result.error || 'Erro ao fazer login.')
       setSubmitting(false)
     }
-  }
-
-  const quickLogin = (acc: { email: string }) => {
-    setEmail(acc.email)
-    setPassword('admin123')
-    setError('')
   }
 
   const features = [
@@ -158,25 +146,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-8 p-4 bg-slate-50 rounded-xl border border-slate-200">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Acesso Demonstração</p>
-            <p className="text-xs text-slate-400 mb-3">Senha padrão: <code className="bg-slate-200 px-1.5 py-0.5 rounded text-slate-700">admin123</code></p>
-            <div className="space-y-2">
-              {DEMO_ACCOUNTS.map(acc => (
-                <button
-                  key={acc.email}
-                  onClick={() => quickLogin(acc)}
-                  className="w-full flex items-center gap-2.5 text-left px-3 py-2 rounded-lg bg-white border border-slate-200 hover:border-blue-300 hover:bg-blue-50 transition-all group text-sm"
-                >
-                  <CheckCircle2 size={14} className="text-slate-300 group-hover:text-blue-500 transition-colors flex-shrink-0" />
-                  <div>
-                    <p className="font-medium text-slate-700 text-xs">{acc.label}</p>
-                    <p className="text-slate-400 text-xs">{acc.email}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
     </div>
