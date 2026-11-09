@@ -13,6 +13,7 @@ const routeLabels: Record<string, { title: string; subtitle?: string }> = {
   '/dre/mensal':     { title: 'DRE Mensal', subtitle: 'Demonstração do Resultado do Exercício' },
   '/dre/anual':      { title: 'DRE Anual', subtitle: 'Consolidação anual dos resultados' },
   '/fluxo-caixa':    { title: 'Fluxo de Caixa', subtitle: 'Projeção e controle de caixa' },
+  '/receitas-saidas': { title: 'Receitas e Saídas', subtitle: 'Relatório diário e semanal' },
   '/indicadores':    { title: 'Indicadores Financeiros', subtitle: 'KPIs e métricas empresariais' },
   '/relatorios':     { title: 'Relatórios', subtitle: 'Relatórios gerenciais e operacionais' },
   '/configuracoes':  { title: 'Configurações', subtitle: 'Parâmetros do sistema' },

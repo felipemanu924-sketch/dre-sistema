@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, FileText, BookOpen, TrendingUp, TrendingDown,
   BarChart3, Target, Printer, Settings, ChevronLeft, ChevronRight,
-  LogOut, Moon, Sun, DollarSign, ChevronDown, Building2, Wallet,
+  LogOut, Moon, Sun, DollarSign, ChevronDown, Building2, Wallet, CalendarDays,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
@@ -30,6 +30,7 @@ const navItems: NavItem[] = [
     ],
   },
   { label: 'Fluxo de Caixa', href: '/fluxo-caixa', icon: <Wallet size={18} /> },
+  { label: 'Receitas e Saídas', href: '/receitas-saidas', icon: <CalendarDays size={18} /> },
   { label: 'Indicadores', href: '/indicadores', icon: <Target size={18} /> },
   { label: 'Relatórios', href: '/relatorios', icon: <Printer size={18} /> },
   { label: 'Configurações', href: '/configuracoes', icon: <Settings size={18} /> },
